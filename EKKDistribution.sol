@@ -3,66 +3,83 @@ pragma solidity ^0.4.20;
 import "./EKK.sol";
 import "./SafeMath.sol";
 import "./Ownable.sol";
-import "./oraclizeAPI_0.5.sol";
 
 
-contract EKKDistribution is Ownable, usingOraclize {
+contract EKKDistribution is Ownable {
     
     using SafeMath for uint256;
     uint256 CampaignPeriod = 600;
     uint256 TokenPerPeriod = 1000000 * 10**uint256(18);
     uint256 EverytimePeriod = 82800; //Every 23 hours
     uint256 minimumInvestment = 100 finney;
+<<<<<<< HEAD
     uint public currentPeriod = 0;
     bool public DistributionStarted = false;
+=======
+    
+    uint public  startTime;            // start time
+
+    mapping (uint => uint)   public  periodAllContribution;
+    mapping (uint => mapping (address => uint))  public  userBuys;
+    mapping (uint => mapping (address => bool))  public  claimed;
+
+>>>>>>> upstream/master
     // address where funds are collected
     address public wallet;
     EKK public token;
     
-    struct Investor {
-        address addr;
-        uint256 amount;
-    }
-    
-    struct Campaign {
-        uint numInvestors;
-        uint256 AllContribution;
-        mapping(uint => Investor) investors;
-    }
-    
-    mapping (uint => Campaign) public campaigns;
-    
-    event TokenPurchase(address indexed purchaser, uint256 amount);
-    
-    // start token Distribution
-    function StartDistribution() onlyOwner public {
-        DistributionStarted = true;
-        campaigns[currentPeriod] = Campaign(0,0);
-        Alarm();
-    }
-    
-
-    function Alarm() internal {
-        oraclize_query(EverytimePeriod, "URL", "");
-    }
-
-    function __callback(bytes32 myid, string result) {
-        
-        if(msg.sender != oraclize_cbAddress()) throw;
-        TokenDistribution();
-        if(currentPeriod < CampaignPeriod) Alarm();
-        else DistributionStarted = false;
-    }
+    event LogBuy (uint day, address user, uint amount);
+    event LogClaim (uint day, address user, uint amount);
     
     function EKKDistribution(address _tokenaddress) {
         wallet = msg.sender;
         token = EKK(_tokenaddress);
     }
     
+    function time() constant returns (uint) {
+        return block.timestamp;
+    }
+
+    function currentperiod() constant returns (uint) {
+        return dayFor(time());
+    }
+
+    // Each window is 23 hours long so that end-of-window rotates
+    // around the clock for all timezones.
+    function dayFor(uint timestamp) constant returns (uint) {
+        return timestamp < startTime
+            ? 0
+            : timestamp.sub(startTime) / 23 hours + 1;
+    }
+    
+    function setStarttime(uint _starttime) onlyOwner public {
+        startTime = _starttime;
+    }
+<<<<<<< HEAD
+    
+=======
+>>>>>>> upstream/master
     function setWalletAddress(address _wallet) onlyOwner public {
         wallet = _wallet;
     }
+    
+    
+    function buytokens(uint day) internal {
+        require(currentperiod() > 0 && currentperiod() <= CampaignPeriod);
+        require(msg.value >= minimumInvestment);
+
+        userBuys[day][msg.sender] += msg.value;
+        periodAllContribution[day] += msg.value;
+
+        LogBuy(day, msg.sender, msg.value);
+    }
+
+    function buy() payable {
+       buytokens(currentperiod());
+    }
+
     function () payable external{
+<<<<<<< HEAD
         require(msg.value >= minimumInvestment);
         require(DistributionStarted || msg.sender == owner);
         if(DistributionStarted && msg.sender != owner) {
@@ -72,18 +89,31 @@ contract EKKDistribution is Ownable, usingOraclize {
             c.investors[c.numInvestors] = Investor({addr:msg.sender, amount:msg.value});
             wallet.transfer(msg.value);
         }
+=======
+       buy();
+>>>>>>> upstream/master
     }
     
-    function TokenDistribution() internal {
-        Campaign storage c = campaigns[currentPeriod];
-        if(c.numInvestors >= 1) {
-            for(uint i = 1; i <= c.numInvestors; i++) {
-                uint256 tokenBought = TokenPerPeriod.mul(c.investors[i].amount).div(c.AllContribution);
-                token.transferfromThis(c.investors[i].addr, tokenBought);
-                TokenPurchase(c.investors[i].addr, tokenBought);
-            }
+    
+    function claim(uint day) public {
+        
+        require(currentperiod() > day);
+
+        if (claimed[day][msg.sender] || periodAllContribution[day] == 0) {
+            return;
         }
-        currentPeriod++;
-        campaigns[currentPeriod] = Campaign(0,0);
+
+        uint256 reward = TokenPerPeriod.mul(userBuys[day][msg.sender]).div(periodAllContribution[day]);
+        token.transferfromThis(msg.sender, reward);
+        claimed[day][msg.sender] = true;
+
+        LogClaim(day, msg.sender, reward);
     }
+
+    function claimAll() public {
+        for (uint i = 0; i < currentperiod(); i++) {
+            claim(i);
+        }
+    }
+    
 }
