@@ -12,10 +12,6 @@ contract EKKDistribution is Ownable {
     uint256 TokenPerPeriod = 1000000 * 10**uint256(18);
     uint256 EverytimePeriod = 82800; //Every 23 hours
     uint256 minimumInvestment = 100 finney;
-<<<<<<< HEAD
-    uint public currentPeriod = 0;
-    bool public DistributionStarted = false;
-=======
     
     uint public  startTime;            // start time
 
@@ -23,7 +19,6 @@ contract EKKDistribution is Ownable {
     mapping (uint => mapping (address => uint))  public  userBuys;
     mapping (uint => mapping (address => bool))  public  claimed;
 
->>>>>>> upstream/master
     // address where funds are collected
     address public wallet;
     EKK public token;
@@ -55,10 +50,6 @@ contract EKKDistribution is Ownable {
     function setStarttime(uint _starttime) onlyOwner public {
         startTime = _starttime;
     }
-<<<<<<< HEAD
-    
-=======
->>>>>>> upstream/master
     function setWalletAddress(address _wallet) onlyOwner public {
         wallet = _wallet;
     }
@@ -79,19 +70,7 @@ contract EKKDistribution is Ownable {
     }
 
     function () payable external{
-<<<<<<< HEAD
-        require(msg.value >= minimumInvestment);
-        require(DistributionStarted || msg.sender == owner);
-        if(DistributionStarted && msg.sender != owner) {
-            Campaign storage c = campaigns[currentPeriod];
-            c.numInvestors++;
-            c.AllContribution += msg.value;
-            c.investors[c.numInvestors] = Investor({addr:msg.sender, amount:msg.value});
-            wallet.transfer(msg.value);
-        }
-=======
        buy();
->>>>>>> upstream/master
     }
     
     
